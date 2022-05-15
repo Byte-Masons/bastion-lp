@@ -1,7 +1,7 @@
 async function main() {
   const Vault = await ethers.getContractFactory('ReaperVaultv1_4');
 
-  const wantAddress = '0x45f4682B560d4e3B8FF1F1b3A38FDBe775C7177b';
+  const wantAddress = '0x0039f0641156cac478b0DebAb086D78B66a69a01';
   const tokenName = 'TOMB-MAI Tomb Crypt';
   const tokenSymbol = 'rf-TOMB-MAI';
   const depositFee = 0;

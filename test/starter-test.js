@@ -41,10 +41,10 @@ describe('Vaults', function () {
   const superAdminAddress = '0x04C710a1E8a738CDf7cAD3a52Ba77A784C35d8CE';
   const adminAddress = '0x539eF36C804e4D735d8cAb69e8e441c12d4B88E0';
   const guardianAddress = '0xf20E25f2AB644C8ecBFc992a6829478a85A98F2c';
-  const wantAddress = '0x45f4682B560d4e3B8FF1F1b3A38FDBe775C7177b';
+  const wantAddress = '0x0039f0641156cac478b0DebAb086D78B66a69a01';
   const wftmAddress = '0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83';
 
-  const wantHolderAddr = '0x93a4C7cA8123551ac3FD14D7f7B646DB47b2bb37';
+  const wantHolderAddr = '0xee1e33029c2104993e4536be502990284e77080d';
   const strategistAddr = '0x1A20D7A31e5B3Bc5f02c8A146EF6f394502a10c4';
 
   let owner;

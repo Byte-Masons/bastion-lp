@@ -8,7 +8,7 @@ import "./interfaces/IUniswapV2Router02.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
 /**
- * @dev Deposit TOMB-MAI LP in TShareRewardsPool. Harvest TSHARE rewards and recompound.
+ * @dev Deposit TOMB-MAI LP in TShareRewardsPool. Harvest BSTN rewards and recompound.
  */
 contract ReaperStrategyBastionLP is ReaperBaseStrategyv3 {
     using SafeERC20Upgradeable for IERC20Upgradeable;
@@ -20,22 +20,22 @@ contract ReaperStrategyBastionLP is ReaperBaseStrategyv3 {
 
     /**
      * @dev Tokens Used:
-     * {WFTM} - Required for liquidity routing when doing swaps.
-     * {TSHARE} - Reward token for depositing LP into TShareRewardsPool.
+     * {NEAR} - Required for liquidity routing when doing swaps.
+     * {BSTN} - Reward token for depositing LP into TShareRewardsPool.
      * {want} - Address of TOMB-MAI LP token. (lowercase name for FE compatibility)
      * {lpToken0} - TOMB (name for FE compatibility)
      * {lpToken1} - MAI (name for FE compatibility)
      */
-    address public constant WFTM = address(0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83);
-    address public constant TSHARE = address(0x4cdF39285D7Ca8eB3f090fDA0C069ba5F4145B37);
-    address public constant want = address(0x45f4682B560d4e3B8FF1F1b3A38FDBe775C7177b);
+    address public constant NEAR = address(0xC42C30aC6Cc15faC9bD938618BcaA1a1FaE8501d);
+    address public constant BSTN = address(0x9f1F933C660a1DC856F0E0Fe058435879c5CCEf0);
+    address public constant want = address(0x0039f0641156cac478b0DebAb086D78B66a69a01);
     address public constant lpToken0 = address(0x6c021Ae822BEa943b2E66552bDe1D2696a53fbB7);
     address public constant lpToken1 = address(0xfB98B335551a418cD0737375a2ea0ded62Ea213b);
 
     /**
      * @dev Paths used to swap tokens:
-     * {tshareToWftmPath} - to swap {TSHARE} to {WFTM} (using SPOOKY_ROUTER)
-     * {wftmToTombPath} - to swap {WFTM} to {lpToken0} (using SPOOKY_ROUTER)
+     * {tshareToWftmPath} - to swap {BSTN} to {NEAR} (using SPOOKY_ROUTER)
+     * {wftmToTombPath} - to swap {NEAR} to {lpToken0} (using SPOOKY_ROUTER)
      * {tombToMaiPath} - to swap half of {lpToken0} to {lpToken1} (using TOMB_ROUTER)
      */
     address[] public tshareToWftmPath;
@@ -59,8 +59,8 @@ contract ReaperStrategyBastionLP is ReaperBaseStrategyv3 {
         address[] memory _multisigRoles
     ) public initializer {
         __ReaperBaseStrategy_init(_vault, _feeRemitters, _strategists, _multisigRoles);
-        tshareToWftmPath = [TSHARE, WFTM];
-        wftmToTombPath = [WFTM, lpToken0];
+        tshareToWftmPath = [BSTN, NEAR];
+        wftmToTombPath = [NEAR, lpToken0];
         tombToMaiPath = [lpToken0, lpToken1];
         poolId = 2;
     }
@@ -91,22 +91,22 @@ contract ReaperStrategyBastionLP is ReaperBaseStrategyv3 {
 
     /**
      * @dev Core function of the strat, in charge of collecting and re-investing rewards.
-     *      1. Claims {TSHARE} from the {TSHARE_REWARDS_POOL}.
-     *      2. Swaps {TSHARE} to {WFTM} using {SPOOKY_ROUTER}.
+     *      1. Claims {BSTN} from the {TSHARE_REWARDS_POOL}.
+     *      2. Swaps {BSTN} to {NEAR} using {SPOOKY_ROUTER}.
      *      3. Claims fees for the harvest caller and treasury.
-     *      4. Swaps the {WFTM} token for {lpToken0} using {SPOOKY_ROUTER}.
+     *      4. Swaps the {NEAR} token for {lpToken0} using {SPOOKY_ROUTER}.
      *      5. Swaps half of {lpToken0} to {lpToken1} using {TOMB_ROUTER}.
      *      6. Creates new LP tokens and deposits.
      */
     function _harvestCore() internal override returns (uint256 callerFee) {
         IMasterChef(TSHARE_REWARDS_POOL).deposit(poolId, 0); // deposit 0 to claim rewards
 
-        uint256 tshareBal = IERC20Upgradeable(TSHARE).balanceOf(address(this));
+        uint256 tshareBal = IERC20Upgradeable(BSTN).balanceOf(address(this));
         _swap(tshareBal, tshareToWftmPath, SPOOKY_ROUTER);
 
         callerFee = _chargeFees();
 
-        uint256 wftmBal = IERC20Upgradeable(WFTM).balanceOf(address(this));
+        uint256 wftmBal = IERC20Upgradeable(NEAR).balanceOf(address(this));
         _swap(wftmBal, wftmToTombPath, SPOOKY_ROUTER);
         uint256 tombHalf = IERC20Upgradeable(lpToken0).balanceOf(address(this)) / 2;
         _swap(tombHalf, tombToMaiPath, TOMB_ROUTER);
@@ -139,10 +139,10 @@ contract ReaperStrategyBastionLP is ReaperBaseStrategyv3 {
 
     /**
      * @dev Core harvest function.
-     *      Charges fees based on the amount of WFTM gained from reward
+     *      Charges fees based on the amount of NEAR gained from reward
      */
     function _chargeFees() internal returns (uint256 callerFee) {
-        IERC20Upgradeable wftm = IERC20Upgradeable(WFTM);
+        IERC20Upgradeable wftm = IERC20Upgradeable(NEAR);
         uint256 wftmFee = (wftm.balanceOf(address(this)) * totalFee) / PERCENT_DIVISOR;
         if (wftmFee != 0) {
             callerFee = (wftmFee * callFee) / PERCENT_DIVISOR;
