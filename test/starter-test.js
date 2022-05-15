@@ -123,7 +123,7 @@ describe('Vaults', function () {
   });
 
   describe('Deploying the vault and strategy', function () {
-    it('should initiate vault with a 0 balance', async function () {
+    xit('should initiate vault with a 0 balance', async function () {
       const totalBalance = await vault.balance();
       const availableBalance = await vault.available();
       const pricePerFullShare = await vault.getPricePerFullShare();
@@ -206,7 +206,7 @@ describe('Vaults', function () {
   });
 
   describe('Vault Tests', function () {
-    it('should allow deposits and account for them correctly', async function () {
+    xit('should allow deposits and account for them correctly', async function () {
       const userBalance = await want.balanceOf(wantHolderAddr);
       const vaultBalance = await vault.balance();
       const depositAmount = toWantUnit('10');
@@ -218,31 +218,7 @@ describe('Vaults', function () {
       expect(depositAmount).to.be.closeTo(newVaultBalance, allowedInaccuracy);
     });
 
-    xit('should mint user their pool share', async function () {
-      const userBalance = await want.balanceOf(wantHolderAddr);
-      const depositAmount = toWantUnit('10');
-      await vault.connect(wantHolder).deposit(depositAmount);
-
-      const ownerDepositAmount = toWantUnit('0.1');
-      await want.connect(wantHolder).transfer(owner.address, ownerDepositAmount);
-      await want.connect(owner).approve(vault.address, ethers.constants.MaxUint256);
-      await vault.connect(owner).deposit(ownerDepositAmount);
-
-      const allowedImprecision = toWantUnit('0.0001');
-
-      const userVaultBalance = await vault.balanceOf(wantHolderAddr);
-      expect(userVaultBalance).to.be.closeTo(depositAmount, allowedImprecision);
-      const ownerVaultBalance = await vault.balanceOf(owner.address);
-      expect(ownerVaultBalance).to.be.closeTo(ownerDepositAmount, allowedImprecision);
-
-      await vault.connect(owner).withdrawAll();
-      const ownerWantBalance = await want.balanceOf(owner.address);
-      expect(ownerWantBalance).to.be.closeTo(ownerDepositAmount, allowedImprecision);
-      const afterOwnerVaultBalance = await vault.balanceOf(owner.address);
-      expect(afterOwnerVaultBalance).to.equal(0);
-    });
-
-    xit('should allow withdrawals', async function () {
+    it('should allow withdrawals', async function () {
       const userBalance = await want.balanceOf(wantHolderAddr);
       const depositAmount = toWantUnit('100');
       await vault.connect(wantHolder).deposit(depositAmount);
