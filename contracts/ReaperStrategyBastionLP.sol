@@ -14,9 +14,8 @@ contract ReaperStrategyBastionLP is ReaperBaseStrategyv3 {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     // 3rd-party contract addresses
-    address public constant TOMB_ROUTER = address(0x6D0176C5ea1e44b08D3dd001b0784cE42F47a3A7);
-    address public constant SPOOKY_ROUTER = address(0xF491e7B69E4244ad4002BC14e878a34207E38c29);
-    address public constant TSHARE_REWARDS_POOL = address(0xcc0a87F7e7c693042a9Cc703661F5060c80ACb43);
+    address public constant TRISOLARIS_ROUTER = address(0x2CB45Edb4517d5947aFdE3BEAbF95A582506858B);
+    address public constant MASTER_CHEF = address(0x20D0E2D27D7d3f5420E68eBA474D4206431734D8);
 
     /**
      * @dev Tokens Used:
@@ -29,18 +28,20 @@ contract ReaperStrategyBastionLP is ReaperBaseStrategyv3 {
     address public constant NEAR = address(0xC42C30aC6Cc15faC9bD938618BcaA1a1FaE8501d);
     address public constant BSTN = address(0x9f1F933C660a1DC856F0E0Fe058435879c5CCEf0);
     address public constant want = address(0x0039f0641156cac478b0DebAb086D78B66a69a01);
-    address public constant lpToken0 = address(0x6c021Ae822BEa943b2E66552bDe1D2696a53fbB7);
-    address public constant lpToken1 = address(0xfB98B335551a418cD0737375a2ea0ded62Ea213b);
+    address public constant USDT = address(0x4988a896b1227218e4A686fdE5EabdcAbd91571f);
+    address public constant USDC = address(0xB12BFcA5A55806AaF64E99521918A4bf0fC40802);
+    address public constant lpToken0 = address(0x845E15A441CFC1871B7AC610b0E922019BaD9826);
+    address public constant lpToken1 = address(0xe5308dc623101508952948b141fD9eaBd3337D99);
 
     /**
      * @dev Paths used to swap tokens:
-     * {tshareToWftmPath} - to swap {BSTN} to {NEAR} (using SPOOKY_ROUTER)
-     * {wftmToTombPath} - to swap {NEAR} to {lpToken0} (using SPOOKY_ROUTER)
-     * {tombToMaiPath} - to swap half of {lpToken0} to {lpToken1} (using TOMB_ROUTER)
+     * {bstnToNearPath} - to swap {BSTN} to {NEAR} (using SPOOKY_ROUTER)
+     * {nearToLP0} - to swap {NEAR} to {lpToken0} (using SPOOKY_ROUTER)
+     * {nearToLP1} - to swap half of {lpToken0} to {lpToken1} (using TOMB_ROUTER)
      */
-    address[] public tshareToWftmPath;
-    address[] public wftmToTombPath;
-    address[] public tombToMaiPath;
+    address[] public bstnToNearPath;
+    address[] public nearToLP0;
+    address[] public nearToLP1;
 
     /**
      * @dev Tomb variables
@@ -59,10 +60,10 @@ contract ReaperStrategyBastionLP is ReaperBaseStrategyv3 {
         address[] memory _multisigRoles
     ) public initializer {
         __ReaperBaseStrategy_init(_vault, _feeRemitters, _strategists, _multisigRoles);
-        tshareToWftmPath = [BSTN, NEAR];
-        wftmToTombPath = [NEAR, lpToken0];
-        tombToMaiPath = [lpToken0, lpToken1];
-        poolId = 2;
+        bstnToNearPath = [BSTN, NEAR];
+        nearToLP0 = [NEAR, lpToken0];
+        nearToLP1 = [NEAR, lpToken1];
+        poolId = 0;
     }
 
     /**
@@ -72,8 +73,8 @@ contract ReaperStrategyBastionLP is ReaperBaseStrategyv3 {
     function _deposit() internal override {
         uint256 wantBalance = IERC20Upgradeable(want).balanceOf(address(this));
         if (wantBalance != 0) {
-            IERC20Upgradeable(want).safeIncreaseAllowance(TSHARE_REWARDS_POOL, wantBalance);
-            IMasterChef(TSHARE_REWARDS_POOL).deposit(poolId, wantBalance);
+            IERC20Upgradeable(want).safeIncreaseAllowance(MASTER_CHEF, wantBalance);
+            IMasterChef(MASTER_CHEF).deposit(poolId, wantBalance, address(this));
         }
     }
 
@@ -81,12 +82,12 @@ contract ReaperStrategyBastionLP is ReaperBaseStrategyv3 {
      * @dev Withdraws funds and sends them back to the vault.
      */
     function _withdraw(uint256 _amount) internal override {
-        uint256 wantBal = IERC20Upgradeable(want).balanceOf(address(this));
-        if (wantBal < _amount) {
-            IMasterChef(TSHARE_REWARDS_POOL).withdraw(poolId, _amount - wantBal);
-        }
+        // uint256 wantBal = IERC20Upgradeable(want).balanceOf(address(this));
+        // if (wantBal < _amount) {
+        //     IMasterChef(TSHARE_REWARDS_POOL).withdraw(poolId, _amount - wantBal);
+        // }
 
-        IERC20Upgradeable(want).safeTransfer(vault, _amount);
+        // IERC20Upgradeable(want).safeTransfer(vault, _amount);
     }
 
     /**
@@ -99,20 +100,20 @@ contract ReaperStrategyBastionLP is ReaperBaseStrategyv3 {
      *      6. Creates new LP tokens and deposits.
      */
     function _harvestCore() internal override returns (uint256 callerFee) {
-        IMasterChef(TSHARE_REWARDS_POOL).deposit(poolId, 0); // deposit 0 to claim rewards
+        // IMasterChef(TSHARE_REWARDS_POOL).deposit(poolId, 0); // deposit 0 to claim rewards
 
-        uint256 tshareBal = IERC20Upgradeable(BSTN).balanceOf(address(this));
-        _swap(tshareBal, tshareToWftmPath, SPOOKY_ROUTER);
+        // uint256 tshareBal = IERC20Upgradeable(BSTN).balanceOf(address(this));
+        // _swap(tshareBal, bstnToNearPath, SPOOKY_ROUTER);
 
-        callerFee = _chargeFees();
+        // callerFee = _chargeFees();
 
-        uint256 wftmBal = IERC20Upgradeable(NEAR).balanceOf(address(this));
-        _swap(wftmBal, wftmToTombPath, SPOOKY_ROUTER);
-        uint256 tombHalf = IERC20Upgradeable(lpToken0).balanceOf(address(this)) / 2;
-        _swap(tombHalf, tombToMaiPath, TOMB_ROUTER);
+        // uint256 wftmBal = IERC20Upgradeable(NEAR).balanceOf(address(this));
+        // _swap(wftmBal, nearToLP0, SPOOKY_ROUTER);
+        // uint256 tombHalf = IERC20Upgradeable(lpToken0).balanceOf(address(this)) / 2;
+        // _swap(tombHalf, nearToLP1, TOMB_ROUTER);
 
-        _addLiquidity();
-        deposit();
+        // _addLiquidity();
+        // deposit();
     }
 
     /**
@@ -160,23 +161,23 @@ contract ReaperStrategyBastionLP is ReaperBaseStrategyv3 {
      * @dev Core harvest function. Adds more liquidity using {lpToken0} and {lpToken1}.
      */
     function _addLiquidity() internal {
-        uint256 lp0Bal = IERC20Upgradeable(lpToken0).balanceOf(address(this));
-        uint256 lp1Bal = IERC20Upgradeable(lpToken1).balanceOf(address(this));
+        // uint256 lp0Bal = IERC20Upgradeable(lpToken0).balanceOf(address(this));
+        // uint256 lp1Bal = IERC20Upgradeable(lpToken1).balanceOf(address(this));
 
-        if (lp0Bal != 0 && lp1Bal != 0) {
-            IERC20Upgradeable(lpToken0).safeIncreaseAllowance(TOMB_ROUTER, lp0Bal);
-            IERC20Upgradeable(lpToken1).safeIncreaseAllowance(TOMB_ROUTER, lp1Bal);
-            IUniswapV2Router02(TOMB_ROUTER).addLiquidity(
-                lpToken0,
-                lpToken1,
-                lp0Bal,
-                lp1Bal,
-                0,
-                0,
-                address(this),
-                block.timestamp
-            );
-        }
+        // if (lp0Bal != 0 && lp1Bal != 0) {
+        //     IERC20Upgradeable(lpToken0).safeIncreaseAllowance(TOMB_ROUTER, lp0Bal);
+        //     IERC20Upgradeable(lpToken1).safeIncreaseAllowance(TOMB_ROUTER, lp1Bal);
+        //     IUniswapV2Router02(TOMB_ROUTER).addLiquidity(
+        //         lpToken0,
+        //         lpToken1,
+        //         lp0Bal,
+        //         lp1Bal,
+        //         0,
+        //         0,
+        //         address(this),
+        //         block.timestamp
+        //     );
+        // }
     }
 
     /**
@@ -184,7 +185,7 @@ contract ReaperStrategyBastionLP is ReaperBaseStrategyv3 {
      *      It takes into account both the funds in hand, plus the funds in the MasterChef.
      */
     function balanceOf() public view override returns (uint256) {
-        (uint256 amount, ) = IMasterChef(TSHARE_REWARDS_POOL).userInfo(poolId, address(this));
+        (uint256 amount, ) = IMasterChef(MASTER_CHEF).userInfo(poolId, address(this));
         return amount + IERC20Upgradeable(want).balanceOf(address(this));
     }
 
@@ -192,6 +193,6 @@ contract ReaperStrategyBastionLP is ReaperBaseStrategyv3 {
      * Withdraws all funds leaving rewards behind.
      */
     function _reclaimWant() internal override {
-        IMasterChef(TSHARE_REWARDS_POOL).emergencyWithdraw(poolId);
+        // IMasterChef(TSHARE_REWARDS_POOL).emergencyWithdraw(poolId);
     }
 }
