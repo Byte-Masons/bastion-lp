@@ -113,7 +113,7 @@ contract ReaperStrategyBastionLP is ReaperBaseStrategyv3 {
         _claimRewards();
         callerFee = _chargeFees();
         _addLiquidity();
-        deposit();
+        // deposit();
     }
 
     function _claimRewards() internal {
@@ -221,5 +221,13 @@ contract ReaperStrategyBastionLP is ReaperBaseStrategyv3 {
      */
     function _reclaimWant() internal override {
         IMasterChef(MASTER_CHEF).emergencyWithdraw(poolId, address(this));
+    }
+
+    /**
+     * Changes which token fees are charged in.
+     */
+    function _setChargeFeesInUsdc(bool _chargeFeesInUsdc) external {
+        _atLeastRole(STRATEGIST);
+        chargeFeesInUsdc = _chargeFeesInUsdc;
     }
 }
