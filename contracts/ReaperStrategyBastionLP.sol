@@ -106,14 +106,10 @@ contract ReaperStrategyBastionLP is ReaperBaseStrategyv3 {
      * @dev Core function of the strat, in charge of collecting and re-investing rewards.
      *      1. Claims {BSTN} from the {MASTER_CHEF}.
      *      2. Swaps {BSTN} to {NEAR} and charges fees.
-     *      3. Swaps {NEAR} to the LP want token
-     *      4. Deposits LP in the {MASTER_CHEF}
      */
     function _harvestCore() internal override returns (uint256 callerFee) {
         _claimRewards();
         callerFee = _chargeFees();
-        _addLiquidity();
-        // deposit();
     }
 
     function _claimRewards() internal {
@@ -174,7 +170,7 @@ contract ReaperStrategyBastionLP is ReaperBaseStrategyv3 {
     /**
      * @dev Core harvest function. Adds more liquidity using {lpToken0} and {lpToken1}.
      */
-    function _addLiquidity() internal {
+    function addLiquidity() external {
         uint256 nearBalanceHalf = IERC20Upgradeable(NEAR).balanceOf(address(this)) / 2;
 
         if (nearBalanceHalf != 0) {
