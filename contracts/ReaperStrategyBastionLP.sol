@@ -5,7 +5,11 @@ pragma solidity ^0.8.0;
 import "./abstract/ReaperBaseStrategyv3.sol";
 import "./interfaces/IMasterChef.sol";
 import "./interfaces/IUniswapV2Router02.sol";
+import './interfaces/CErc20I.sol';
+import './interfaces/ISwap.sol';
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+
+import 'hardhat/console.sol';
 
 /**
  * @dev Deposit TOMB-MAI LP in TShareRewardsPool. Harvest BSTN rewards and recompound.
@@ -15,6 +19,7 @@ contract ReaperStrategyBastionLP is ReaperBaseStrategyv3 {
 
     // 3rd-party contract addresses
     address public constant TRISOLARIS_ROUTER = address(0x2CB45Edb4517d5947aFdE3BEAbF95A582506858B);
+    address public constant BASTION_ROUTER = address(0x6287e912a9Ccd4D5874aE15d3c89556b2a05f080);
     address public constant MASTER_CHEF = address(0x20D0E2D27D7d3f5420E68eBA474D4206431734D8);
 
     /**
@@ -36,18 +41,24 @@ contract ReaperStrategyBastionLP is ReaperBaseStrategyv3 {
     /**
      * @dev Paths used to swap tokens:
      * {bstnToNearPath} - to swap {BSTN} to {NEAR} (using SPOOKY_ROUTER)
-     * {nearToLP0} - to swap {NEAR} to {lpToken0} (using SPOOKY_ROUTER)
-     * {nearToLP1} - to swap half of {lpToken0} to {lpToken1} (using TOMB_ROUTER)
+     * {nearToUsdc} - to swap {NEAR} to {lpToken0} (using SPOOKY_ROUTER)
+     * {nearToUsdt} - to swap half of {lpToken0} to {lpToken1} (using TOMB_ROUTER)
      */
     address[] public bstnToNearPath;
-    address[] public nearToLP0;
-    address[] public nearToLP1;
+    address[] public nearToUsdc;
+    address[] public nearToUsdt;
 
     /**
      * @dev Tomb variables
      * {poolId} - ID of pool in which to deposit LP tokens
      */
     uint256 public poolId;
+
+    /**
+     * @dev Strategy variables
+     * {chargeFeesInUsdc} - Can be set to charge fees in USDC
+     */
+    bool public chargeFeesInUsdc;
 
     /**
      * @dev Initializes the strategy. Sets parameters and saves routes.
@@ -61,9 +72,10 @@ contract ReaperStrategyBastionLP is ReaperBaseStrategyv3 {
     ) public initializer {
         __ReaperBaseStrategy_init(_vault, _feeRemitters, _strategists, _multisigRoles);
         bstnToNearPath = [BSTN, NEAR];
-        nearToLP0 = [NEAR, lpToken0];
-        nearToLP1 = [NEAR, lpToken1];
+        nearToUsdc = [NEAR, USDC];
+        nearToUsdt = [NEAR, USDT];
         poolId = 0;
+        chargeFeesInUsdc = false;
     }
 
     /**
@@ -100,20 +112,14 @@ contract ReaperStrategyBastionLP is ReaperBaseStrategyv3 {
      *      6. Creates new LP tokens and deposits.
      */
     function _harvestCore() internal override returns (uint256 callerFee) {
-        // IMasterChef(TSHARE_REWARDS_POOL).deposit(poolId, 0); // deposit 0 to claim rewards
+        _claimRewards();
+        callerFee = _chargeFees();
+        _addLiquidity();
+        deposit();
+    }
 
-        // uint256 tshareBal = IERC20Upgradeable(BSTN).balanceOf(address(this));
-        // _swap(tshareBal, bstnToNearPath, SPOOKY_ROUTER);
-
-        // callerFee = _chargeFees();
-
-        // uint256 wftmBal = IERC20Upgradeable(NEAR).balanceOf(address(this));
-        // _swap(wftmBal, nearToLP0, SPOOKY_ROUTER);
-        // uint256 tombHalf = IERC20Upgradeable(lpToken0).balanceOf(address(this)) / 2;
-        // _swap(tombHalf, nearToLP1, TOMB_ROUTER);
-
-        // _addLiquidity();
-        // deposit();
+    function _claimRewards() internal {
+        IMasterChef(MASTER_CHEF).harvest(poolId, address(this));
     }
 
     /**
@@ -121,15 +127,14 @@ contract ReaperStrategyBastionLP is ReaperBaseStrategyv3 {
      */
     function _swap(
         uint256 _amount,
-        address[] memory _path,
-        address _router
+        address[] memory _path
     ) internal {
         if (_path.length < 2 || _amount == 0) {
             return;
         }
 
-        IERC20Upgradeable(_path[0]).safeIncreaseAllowance(_router, _amount);
-        IUniswapV2Router02(_router).swapExactTokensForTokensSupportingFeeOnTransferTokens(
+        IERC20Upgradeable(_path[0]).safeIncreaseAllowance(TRISOLARIS_ROUTER, _amount);
+        IUniswapV2Router02(TRISOLARIS_ROUTER).swapExactTokensForTokensSupportingFeeOnTransferTokens(
             _amount,
             0,
             _path,
@@ -140,20 +145,34 @@ contract ReaperStrategyBastionLP is ReaperBaseStrategyv3 {
 
     /**
      * @dev Core harvest function.
-     *      Charges fees based on the amount of NEAR gained from reward
+     *      Charges fees based on the amount of rewards earned
      */
-    function _chargeFees() internal returns (uint256 callerFee) {
-        IERC20Upgradeable wftm = IERC20Upgradeable(NEAR);
-        uint256 wftmFee = (wftm.balanceOf(address(this)) * totalFee) / PERCENT_DIVISOR;
-        if (wftmFee != 0) {
-            callerFee = (wftmFee * callFee) / PERCENT_DIVISOR;
-            uint256 treasuryFeeToVault = (wftmFee * treasuryFee) / PERCENT_DIVISOR;
+    function _chargeFees() internal returns (uint256 callFeeToUser) {
+        console.log("_chargeFees()");
+        uint256 bstnBalance = IERC20Upgradeable(BSTN).balanceOf(address(this));
+        console.log("bstnBalance: ", bstnBalance);
+        _swap(bstnBalance, bstnToNearPath);
+        uint256 nearBalance = IERC20Upgradeable(NEAR).balanceOf(address(this));
+        console.log("nearBalance: ", nearBalance);
+        IERC20Upgradeable feeToken;
+        uint256 fee;
+        if (chargeFeesInUsdc) {
+            _swap(nearBalance * totalFee / PERCENT_DIVISOR, nearToUsdc);
+            feeToken = IERC20Upgradeable(USDC);
+            fee = feeToken.balanceOf(address(this));
+        } else {
+            feeToken = IERC20Upgradeable(NEAR);
+            fee = feeToken.balanceOf(address(this)) * totalFee / PERCENT_DIVISOR;
+        }
+        if (fee != 0) {
+            callFeeToUser = (fee * callFee) / PERCENT_DIVISOR;
+            uint256 treasuryFeeToVault = (fee * treasuryFee) / PERCENT_DIVISOR;
             uint256 feeToStrategist = (treasuryFeeToVault * strategistFee) / PERCENT_DIVISOR;
             treasuryFeeToVault -= feeToStrategist;
 
-            wftm.safeTransfer(msg.sender, callerFee);
-            wftm.safeTransfer(treasury, treasuryFeeToVault);
-            wftm.safeTransfer(strategistRemitter, feeToStrategist);
+            feeToken.safeTransfer(msg.sender, callFeeToUser);
+            feeToken.safeTransfer(treasury, treasuryFeeToVault);
+            feeToken.safeTransfer(strategistRemitter, feeToStrategist);
         }
     }
 
@@ -161,23 +180,42 @@ contract ReaperStrategyBastionLP is ReaperBaseStrategyv3 {
      * @dev Core harvest function. Adds more liquidity using {lpToken0} and {lpToken1}.
      */
     function _addLiquidity() internal {
-        // uint256 lp0Bal = IERC20Upgradeable(lpToken0).balanceOf(address(this));
-        // uint256 lp1Bal = IERC20Upgradeable(lpToken1).balanceOf(address(this));
+        console.log("_addLiquidity()");
+        uint256 nearBalanceHalf = IERC20Upgradeable(NEAR).balanceOf(address(this)) / 2;
 
-        // if (lp0Bal != 0 && lp1Bal != 0) {
-        //     IERC20Upgradeable(lpToken0).safeIncreaseAllowance(TOMB_ROUTER, lp0Bal);
-        //     IERC20Upgradeable(lpToken1).safeIncreaseAllowance(TOMB_ROUTER, lp1Bal);
-        //     IUniswapV2Router02(TOMB_ROUTER).addLiquidity(
-        //         lpToken0,
-        //         lpToken1,
-        //         lp0Bal,
-        //         lp1Bal,
-        //         0,
-        //         0,
-        //         address(this),
-        //         block.timestamp
-        //     );
-        // }
+        if (nearBalanceHalf != 0) {
+            _swap(nearBalanceHalf, nearToUsdt);
+            _swap(nearBalanceHalf, nearToUsdc);
+
+            uint256 usdtBalance = IERC20Upgradeable(USDT).balanceOf(address(this));
+            uint256 usdcBalance = IERC20Upgradeable(USDC).balanceOf(address(this));
+            console.log("usdtBalance: ", usdtBalance);
+            console.log("usdcBalance: ", usdcBalance);
+            
+
+            IERC20Upgradeable(USDT).safeIncreaseAllowance(lpToken0, usdtBalance);
+            IERC20Upgradeable(USDC).safeIncreaseAllowance(lpToken1, usdcBalance);
+            CErc20I(lpToken0).mint(usdtBalance);
+            CErc20I(lpToken1).mint(usdcBalance);
+
+            uint256 lp0Balance = IERC20Upgradeable(lpToken0).balanceOf(address(this));
+            uint256 lp1Balance = IERC20Upgradeable(lpToken1).balanceOf(address(this));
+            console.log("lp0Balance: ", lp0Balance);
+            console.log("lp1Balance: ", lp1Balance);
+
+            if (lp0Balance != 0 && lp1Balance != 0) {
+                IERC20Upgradeable(lpToken0).safeIncreaseAllowance(BASTION_ROUTER, lp0Balance);
+                IERC20Upgradeable(lpToken1).safeIncreaseAllowance(BASTION_ROUTER, lp1Balance);
+                uint256[] memory amounts = new uint256[](2);
+                amounts[0] = lp0Balance;
+                amounts[1] = lp1Balance;
+                ISwap(BASTION_ROUTER).addLiquidity(
+                    amounts,
+                    1,
+                    block.timestamp
+                );
+            }
+        }
     }
 
     /**
@@ -193,6 +231,6 @@ contract ReaperStrategyBastionLP is ReaperBaseStrategyv3 {
      * Withdraws all funds leaving rewards behind.
      */
     function _reclaimWant() internal override {
-        // IMasterChef(TSHARE_REWARDS_POOL).emergencyWithdraw(poolId);
+        IMasterChef(MASTER_CHEF).emergencyWithdraw(poolId, address(this));
     }
 }
