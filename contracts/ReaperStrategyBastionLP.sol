@@ -75,7 +75,7 @@ contract ReaperStrategyBastionLP is ReaperBaseStrategyv3 {
         nearToUsdc = [NEAR, USDC];
         nearToUsdt = [NEAR, USDT];
         poolId = 0;
-        chargeFeesInUsdc = true;
+        chargeFeesInUsdc = false;
     }
 
     /**
