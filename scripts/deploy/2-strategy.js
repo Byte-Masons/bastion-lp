@@ -1,11 +1,11 @@
 const hre = require('hardhat');
 
 async function main() {
-  const vaultAddress = 'TODO';
+  const vaultAddress = '0x21f95cfF4aa2E1DD8F43c6B581F246E5aA67Fc9c';
 
   const Strategy = await ethers.getContractFactory('ReaperStrategyBastionLP');
-  const treasuryAddress = '0x0e7c5313E9BB80b654734d9b7aB1FB01468deE3b';
-  const paymentSplitterAddress = '0x63cbd4134c2253041F370472c130e92daE4Ff174';
+  const treasuryAddress = '0x17D099fc623bd06CFE4861d874704Af184773c75';
+  const paymentSplitterAddress = '0x65E45D2f3f43b613416614c73f18fDD3AA2b8391';
   const strategist1 = '0x1E71AEE6081f62053123140aacC7a06021D77348';
   const strategist2 = '0x81876677843D00a7D792E1617459aC2E93202576';
   const strategist3 = '0x1A20D7A31e5B3Bc5f02c8A146EF6f394502a10c4';
