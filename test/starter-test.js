@@ -290,7 +290,7 @@ describe('Vaults', function () {
       console.log(`actual caller fee ${ethers.utils.formatEther(nearBalDifference)}`);
     });
 
-    xit('should provide yield', async function () {
+    it('should provide yield', async function () {
       const timeToSkip = 3600;
       const initialUserBalance = await want.balanceOf(wantHolderAddr);
       const depositAmount = initialUserBalance;
@@ -325,7 +325,7 @@ describe('Vaults', function () {
       await expect(vault.connect(wantHolder).deposit(depositAmount)).to.not.be.reverted;
     });
 
-    it('should be able to panic', async function () {
+    xit('should be able to panic', async function () {
       const depositAmount = toWantUnit('0.007', 6);
       await vault.connect(wantHolder).deposit(depositAmount);
       const vaultBalance = await vault.balance();

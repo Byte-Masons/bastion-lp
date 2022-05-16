@@ -8,14 +8,14 @@
     },
     {
       "address": "0x3887f0555399FfB97EC62B7f8F99290d5007e769",
-      "txHash": "0xd9ccfc16dc8ce1c90d2be946ca1d90dbd9dbff06fbc25096595c0e998339e4a3",
+      "txHash": "0xf76bdfad88b5895660d7abdc6f049cee3a03ed0db2aa84209f496cec12cdf809",
       "kind": "uups"
     }
   ],
   "impls": {
-    "c8b25b612536616e14fd276dd9df23652cdc9f2d66c1b200072d626c34ba4512": {
+    "87d1c56be700688f40b55b119d778891d90308291a9b84fe44ae8c9b20f83c3d": {
       "address": "0x7484BA2BbCAa3A568021d508C0897dE0F7a314Da",
-      "txHash": "0x31d3b1ae737b58afeff7f46682a218f3d65ffbfe278ede1e4dc91798617d9a9c",
+      "txHash": "0x047df9759da0f7a8f5344693dad58b2387e9422c9ee23e72f16d195a80774539",
       "layout": {
         "storage": [
           {
@@ -225,23 +225,23 @@
             "slot": "364",
             "type": "t_array(t_address)dyn_storage",
             "contract": "ReaperStrategyBastionLP",
-            "src": "contracts\\ReaperStrategyBastionLP.sol:47"
-          },
-          {
-            "label": "nearToUsdc",
-            "offset": 0,
-            "slot": "365",
-            "type": "t_array(t_address)dyn_storage",
-            "contract": "ReaperStrategyBastionLP",
-            "src": "contracts\\ReaperStrategyBastionLP.sol:48"
+            "src": "contracts\\ReaperStrategyBastionLP.sol:49"
           },
           {
             "label": "nearToUsdt",
             "offset": 0,
+            "slot": "365",
+            "type": "t_array(t_address)dyn_storage",
+            "contract": "ReaperStrategyBastionLP",
+            "src": "contracts\\ReaperStrategyBastionLP.sol:50"
+          },
+          {
+            "label": "nearToUsdc",
+            "offset": 0,
             "slot": "366",
             "type": "t_array(t_address)dyn_storage",
             "contract": "ReaperStrategyBastionLP",
-            "src": "contracts\\ReaperStrategyBastionLP.sol:49"
+            "src": "contracts\\ReaperStrategyBastionLP.sol:51"
           },
           {
             "label": "poolId",
@@ -249,7 +249,7 @@
             "slot": "367",
             "type": "t_uint256",
             "contract": "ReaperStrategyBastionLP",
-            "src": "contracts\\ReaperStrategyBastionLP.sol:55"
+            "src": "contracts\\ReaperStrategyBastionLP.sol:57"
           },
           {
             "label": "chargeFeesInUsdc",
@@ -257,7 +257,7 @@
             "slot": "368",
             "type": "t_bool",
             "contract": "ReaperStrategyBastionLP",
-            "src": "contracts\\ReaperStrategyBastionLP.sol:61"
+            "src": "contracts\\ReaperStrategyBastionLP.sol:63"
           }
         ],
         "types": {

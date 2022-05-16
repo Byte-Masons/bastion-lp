@@ -9,10 +9,8 @@ import './interfaces/CErc20I.sol';
 import './interfaces/ISwap.sol';
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
-import 'hardhat/console.sol';
-
 /**
- * @dev Deposit TOMB-MAI LP in TShareRewardsPool. Harvest BSTN rewards and recompound.
+ * @dev Deposit cUSDC-cUSDT LP in the MasterChef. Harvest BSTN rewards and recompound.
  */
 contract ReaperStrategyBastionLP is ReaperBaseStrategyv3 {
     using SafeERC20Upgradeable for IERC20Upgradeable;
@@ -26,9 +24,11 @@ contract ReaperStrategyBastionLP is ReaperBaseStrategyv3 {
      * @dev Tokens Used:
      * {NEAR} - Required for liquidity routing when doing swaps.
      * {BSTN} - Reward token for depositing LP into TShareRewardsPool.
-     * {want} - Address of TOMB-MAI LP token. (lowercase name for FE compatibility)
-     * {lpToken0} - TOMB (name for FE compatibility)
-     * {lpToken1} - MAI (name for FE compatibility)
+     * {want} - Address of cUSDC-cUSDT LP token. (lowercase name for FE compatibility)
+     * {USDT} - USDT - intermediate token to create LP
+     * {USDC} - USDC - intermediate token to create LP
+     * {lpToken0} - cUSDT (name for FE compatibility)
+     * {lpToken1} - cUSDC (name for FE compatibility)
      */
     address public constant NEAR = address(0xC42C30aC6Cc15faC9bD938618BcaA1a1FaE8501d);
     address public constant BSTN = address(0x9f1F933C660a1DC856F0E0Fe058435879c5CCEf0);
@@ -40,16 +40,16 @@ contract ReaperStrategyBastionLP is ReaperBaseStrategyv3 {
 
     /**
      * @dev Paths used to swap tokens:
-     * {bstnToNearPath} - to swap {BSTN} to {NEAR} (using SPOOKY_ROUTER)
-     * {nearToUsdc} - to swap {NEAR} to {lpToken0} (using SPOOKY_ROUTER)
-     * {nearToUsdt} - to swap half of {lpToken0} to {lpToken1} (using TOMB_ROUTER)
+     * {bstnToNearPath} - to swap {BSTN} to {NEAR} (using TRISOLARIS_ROUTER)
+     * {nearToUsdt} - to swap {NEAR} to {USDT} (using TRISOLARIS_ROUTER)
+     * {nearToUsdc} - to swap {NEAR} to {USDC} (using TRISOLARIS_ROUTER)
      */
     address[] public bstnToNearPath;
-    address[] public nearToUsdc;
     address[] public nearToUsdt;
+    address[] public nearToUsdc;
 
     /**
-     * @dev Tomb variables
+     * @dev Bastion variables
      * {poolId} - ID of pool in which to deposit LP tokens
      */
     uint256 public poolId;
@@ -75,7 +75,7 @@ contract ReaperStrategyBastionLP is ReaperBaseStrategyv3 {
         nearToUsdc = [NEAR, USDC];
         nearToUsdt = [NEAR, USDT];
         poolId = 0;
-        chargeFeesInUsdc = false;
+        chargeFeesInUsdc = true;
     }
 
     /**
@@ -104,12 +104,10 @@ contract ReaperStrategyBastionLP is ReaperBaseStrategyv3 {
 
     /**
      * @dev Core function of the strat, in charge of collecting and re-investing rewards.
-     *      1. Claims {BSTN} from the {TSHARE_REWARDS_POOL}.
-     *      2. Swaps {BSTN} to {NEAR} using {SPOOKY_ROUTER}.
-     *      3. Claims fees for the harvest caller and treasury.
-     *      4. Swaps the {NEAR} token for {lpToken0} using {SPOOKY_ROUTER}.
-     *      5. Swaps half of {lpToken0} to {lpToken1} using {TOMB_ROUTER}.
-     *      6. Creates new LP tokens and deposits.
+     *      1. Claims {BSTN} from the {MASTER_CHEF}.
+     *      2. Swaps {BSTN} to {NEAR} and charges fees.
+     *      3. Swaps {NEAR} to the LP want token
+     *      4. Deposits LP in the {MASTER_CHEF}
      */
     function _harvestCore() internal override returns (uint256 callerFee) {
         _claimRewards();
@@ -148,12 +146,9 @@ contract ReaperStrategyBastionLP is ReaperBaseStrategyv3 {
      *      Charges fees based on the amount of rewards earned
      */
     function _chargeFees() internal returns (uint256 callFeeToUser) {
-        console.log("_chargeFees()");
         uint256 bstnBalance = IERC20Upgradeable(BSTN).balanceOf(address(this));
-        console.log("bstnBalance: ", bstnBalance);
         _swap(bstnBalance, bstnToNearPath);
         uint256 nearBalance = IERC20Upgradeable(NEAR).balanceOf(address(this));
-        console.log("nearBalance: ", nearBalance);
         IERC20Upgradeable feeToken;
         uint256 fee;
         if (chargeFeesInUsdc) {
@@ -180,7 +175,6 @@ contract ReaperStrategyBastionLP is ReaperBaseStrategyv3 {
      * @dev Core harvest function. Adds more liquidity using {lpToken0} and {lpToken1}.
      */
     function _addLiquidity() internal {
-        console.log("_addLiquidity()");
         uint256 nearBalanceHalf = IERC20Upgradeable(NEAR).balanceOf(address(this)) / 2;
 
         if (nearBalanceHalf != 0) {
@@ -189,10 +183,7 @@ contract ReaperStrategyBastionLP is ReaperBaseStrategyv3 {
 
             uint256 usdtBalance = IERC20Upgradeable(USDT).balanceOf(address(this));
             uint256 usdcBalance = IERC20Upgradeable(USDC).balanceOf(address(this));
-            console.log("usdtBalance: ", usdtBalance);
-            console.log("usdcBalance: ", usdcBalance);
             
-
             IERC20Upgradeable(USDT).safeIncreaseAllowance(lpToken0, usdtBalance);
             IERC20Upgradeable(USDC).safeIncreaseAllowance(lpToken1, usdcBalance);
             CErc20I(lpToken0).mint(usdtBalance);
@@ -200,8 +191,6 @@ contract ReaperStrategyBastionLP is ReaperBaseStrategyv3 {
 
             uint256 lp0Balance = IERC20Upgradeable(lpToken0).balanceOf(address(this));
             uint256 lp1Balance = IERC20Upgradeable(lpToken1).balanceOf(address(this));
-            console.log("lp0Balance: ", lp0Balance);
-            console.log("lp1Balance: ", lp1Balance);
 
             if (lp0Balance != 0 && lp1Balance != 0) {
                 IERC20Upgradeable(lpToken0).safeIncreaseAllowance(BASTION_ROUTER, lp0Balance);
