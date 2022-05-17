@@ -206,7 +206,7 @@ describe('Vaults', function () {
   });
 
   describe('Vault Tests', function () {
-    it('should allow deposits and account for them correctly', async function () {
+    xit('should allow deposits and account for them correctly', async function () {
       const userBalance = await want.balanceOf(wantHolderAddr);
       const vaultBalance = await vault.balance();
       const depositAmount = toWantUnit('10', 6);
@@ -292,7 +292,7 @@ describe('Vaults', function () {
       console.log(`actual caller fee ${ethers.utils.formatEther(nearBalDifference)}`);
     });
 
-    xit('should provide yield', async function () {
+    it('should provide yield', async function () {
       const timeToSkip = 3600;
       const initialUserBalance = await want.balanceOf(wantHolderAddr);
       const depositAmount = initialUserBalance;
@@ -309,6 +309,12 @@ describe('Vaults', function () {
         const tx = await strategy.harvest();
         const receipt = await tx.wait();
         console.log(`harvest gas used ${receipt.gasUsed}`);
+        const tx2 = await strategy.addLiquidity();
+        const receipt2 = await tx2.wait();
+        console.log(`addLiquidity gas used ${receipt2.gasUsed}`);
+        const tx3 = await strategy.deposit();
+        const receipt3 = await tx3.wait();
+        console.log(`deposit gas used ${receipt3.gasUsed}`);
       }
 
       const finalVaultBalance = await vault.balance();

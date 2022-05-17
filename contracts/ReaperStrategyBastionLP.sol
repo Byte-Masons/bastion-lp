@@ -170,7 +170,7 @@ contract ReaperStrategyBastionLP is ReaperBaseStrategyv3 {
     /**
      * @dev Core harvest function. Adds more liquidity using {lpToken0} and {lpToken1}.
      */
-    function addLiquidity() external {
+    function addLiquidity() external whenNotPaused {
         uint256 nearBalanceHalf = IERC20Upgradeable(NEAR).balanceOf(address(this)) / 2;
 
         if (nearBalanceHalf != 0) {
