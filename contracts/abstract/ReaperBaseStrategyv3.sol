@@ -170,15 +170,6 @@ abstract contract ReaperBaseStrategyv3 is
      */
     function harvest() external override whenNotPaused returns (uint256 callerFee) {
         callerFee = _harvestCore();
-
-        if (block.timestamp >= harvestLog[harvestLog.length - 1].timestamp + harvestLogCadence) {
-            harvestLog.push(
-                Harvest({timestamp: block.timestamp, vaultSharePrice: IVault(vault).getPricePerFullShare()})
-            );
-        }
-
-        lastHarvestTimestamp = block.timestamp;
-        emit StratHarvest(msg.sender);
     }
 
     function harvestLogLength() external view returns (uint256) {

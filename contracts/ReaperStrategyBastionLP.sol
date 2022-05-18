@@ -203,6 +203,19 @@ contract ReaperStrategyBastionLP is ReaperBaseStrategyv3 {
         }
     }
 
+    function harvestDeposit() external whenNotPaused {
+        deposit();
+        if (block.timestamp >= harvestLog[harvestLog.length - 1].timestamp + harvestLogCadence) {
+            harvestLog.push(
+                Harvest({timestamp: block.timestamp, vaultSharePrice: IVault(vault).getPricePerFullShare()})
+            );
+        }
+
+        lastHarvestTimestamp = block.timestamp;
+        emit StratHarvest(msg.sender);
+    }
+   
+
     /**
      * @dev Function to calculate the total {want} held by the strat.
      *      It takes into account both the funds in hand, plus the funds in the MasterChef.
