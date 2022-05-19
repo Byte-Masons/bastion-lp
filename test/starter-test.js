@@ -123,7 +123,7 @@ describe('Vaults', function () {
   });
 
   describe('Deploying the vault and strategy', function () {
-    xit('should initiate vault with a 0 balance', async function () {
+    it('should initiate vault with a 0 balance', async function () {
       const totalBalance = await vault.balance();
       const availableBalance = await vault.available();
       const pricePerFullShare = await vault.getPricePerFullShare();
@@ -263,7 +263,7 @@ describe('Vaults', function () {
 
     xit('should handle small deposit + withdraw', async function () {
       const userBalance = await want.balanceOf(wantHolderAddr);
-      const depositAmount = toWantUnit('0.0001', 6);
+      const depositAmount = toWantUnit('0.001', 6);
       await vault.connect(wantHolder).deposit(depositAmount);
 
       await vault.connect(wantHolder).withdraw(depositAmount);
@@ -312,7 +312,7 @@ describe('Vaults', function () {
         const tx2 = await strategy.addLiquidity();
         const receipt2 = await tx2.wait();
         console.log(`addLiquidity gas used ${receipt2.gasUsed}`);
-        const tx3 = await strategy.deposit();
+        const tx3 = await strategy.harvestDeposit();
         const receipt3 = await tx3.wait();
         console.log(`deposit gas used ${receipt3.gasUsed}`);
       }
